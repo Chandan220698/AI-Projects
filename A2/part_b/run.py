@@ -1,4 +1,4 @@
-from ta_agents import Agent
+from agent import Agent
 from env import HighwayEnv
 import signal
 import argparse
