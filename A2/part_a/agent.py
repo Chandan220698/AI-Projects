@@ -11,14 +11,21 @@ DELTAS = ((1, 0), (-1, 0), (0, -1), (0, 1))
 
 
 class Agent:
-    """
-    Part-A MDP agent for TreasureHunt.
-
-    The transition and reward models are known from the input files, so the
-    agent builds the tabular MDP and solves it with value iteration.
-    """
-
     def __init__(self, layout_file, prob_file):
+        """
+        Initialize the agent.
+
+        Args:
+            layout_file: Path to the grid layout file.
+            prob_file: Path to the file containing environment probabilities.
+
+        You may use this function to:
+            - Read and store the grid layout.
+            - Read and store transition probabilities.
+            - Identify important locations such as the fort.
+            - Construct the state space and transition model.
+            - Initialize any data structures required for learning.
+        """
         self.layout_file = layout_file
         self.prob_file = prob_file
 
@@ -32,9 +39,7 @@ class Agent:
         self._build_state_space()
         self._build_transition_model()
 
-    # ------------------------------------------------------------------
     # Input files
-    # ------------------------------------------------------------------
     def _read_layout(self, layout_file):
         with open(layout_file, "r") as f:
             rows = [line.strip() for line in f if line.strip()]
@@ -52,8 +57,8 @@ class Agent:
 
         for i, row in enumerate(rows):
             for j, c in enumerate(row):
-                # The environment uses (i,j) internally, where i is the
-                # row and j is the column. We keep that representation.
+                # The environment uses (i,j) internally,
+                # where i is the row and j is the column.
                 p = (i, j)
                 if c == "L":
                     self.land.add(p)
@@ -102,9 +107,7 @@ class Agent:
         self.r_pirate = r[3]
         self.gamma = float(lines[4])
 
-    # ------------------------------------------------------------------
     # Geometry / state space
-    # ------------------------------------------------------------------
     def _move(self, p, action):
         di, dj = DELTAS[action]
         return (p[0] + di, p[1] + dj)
@@ -134,8 +137,7 @@ class Agent:
         area2 = self._split_component(p2, allowed)
 
         # Normally the assignment guarantees two disjoint connected regions.
-        # If a malformed layout makes the regions overlap, preserve the
-        # environment's intended association as much as possible.
+        # If a malformed layout makes the regions overlap, preserve the environment's intended association as much as possible.
         if area1 & area2:
             area2 = allowed - area1
 
@@ -155,17 +157,14 @@ class Agent:
         for ship in ship_cells:
             for p1 in p1_cells:
                 for p2 in p2_cells:
-                    # All four treasure configurations are possible in the
-                    # tabular MDP. With two treasures this is masks 0..3.
+                    # All four treasure configurations are possible in the tabular MDP. With two treasures this is masks 0..3.
                     for mask in range(1 << len(self.treasures)):
                         s = (ship, p1, p2, mask)
                         self.state_index[s] = len(self.states)
                         self.states.append(s)
                         self.states_by_ship[ship].append(s)
 
-    # ------------------------------------------------------------------
     # Transition model
-    # ------------------------------------------------------------------
     @staticmethod
     def _add_probability(d, key, prob):
         if prob == 0.0:
@@ -202,8 +201,7 @@ class Agent:
         return tuple(out.items())
 
     def _build_transition_model(self):
-        # Precompute local movement distributions. This avoids repeatedly
-        # doing geometry/probability calculations during Bellman updates.
+        # Precompute local movement distributions. This avoids repeatedly doing geometry/probability calculations during Bellman updates.
         self.pirate_move = [dict(), dict()]
         for k in range(2):
             probs = self.pirate_probs[k]
@@ -218,8 +216,8 @@ class Agent:
                 self._ship_transition(ship, a) for a in ACTIONS
             ]
 
-        # For each state/action store aggregated next-state probabilities and
-        # the immediate reward. Terminal next states are represented by None.
+        # For each state/action store aggregated next-state probabilities and the immediate reward.
+        # Terminal next states are represented by None.
         # This is still tabular MDP value iteration, just with transitions
         # precomputed once.
         self.transitions = [None] * len(self.states)
@@ -269,9 +267,7 @@ class Agent:
                             if old is None:
                                 next_map[key] = [prob, reward]
                             else:
-                                # Rewards are deterministic for a given next
-                                # state in this environment, so only the
-                                # probability needs to be accumulated.
+                                # Rewards are deterministic for a given next state in this environment, so only the probability needs to be accumulated.
                                 old[0] += prob
 
                 # Convert [prob, reward] pairs into compact tuples.
@@ -283,9 +279,7 @@ class Agent:
 
             self.transitions[idx] = actions_data
 
-    # ------------------------------------------------------------------
     # Dynamic programming
-    # ------------------------------------------------------------------
     def _q_from_values(self, state_idx, action, values):
         q = 0.0
         for prob, nxt, reward in self.transitions[state_idx][action]:
@@ -305,6 +299,19 @@ class Agent:
 
     def learn_policy(self, time):
         """
+        Learn a policy for navigating the Treasure Hunt environment.
+
+        Args:
+            time: Maximum time (in seconds) allowed for learning.
+
+        The learned policy should be stored internally by the agent
+        and subsequently used by `get_action()`.
+
+        Returns:
+            None
+        """
+
+        """
         Solve the known MDP using in-place value iteration and extract the
         greedy policy. The supplied time value is a maximum training budget;
         the implementation stops early if the Bellman updates converge.
@@ -322,8 +329,7 @@ class Agent:
         for _ in range(max_sweeps):
             max_delta = 0.0
 
-            # In-place (Gauss-Seidel style) Bellman updates are one of the
-            # dynamic-programming improvements discussed in the MDP lecture.
+            # In-place Bellman updates are one of the dynamic-programming improvements.
             for idx in range(n):
                 old = values[idx]
                 new = self._bellman_update(idx, values)
@@ -369,8 +375,8 @@ class Agent:
         if action is not None:
             return action
 
-        # This should only be needed for an unusual/unreachable state. Use a
-        # one-step model-based greedy fallback rather than a random action.
+        # This should only be needed for an unreachable state.
+        # Use a one-step model-based greedy fallback rather than a random action.
         idx = self.state_index.get(state)
         if idx is not None and self.values:
             best_action = 0
