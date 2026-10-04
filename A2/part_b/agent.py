@@ -13,6 +13,13 @@ NUM_ACTIONS = 5
 class Agent:
 
     def __init__(self, env: HighwayEnv, discount_factor=0.99):
+        """
+        Initialize the agent.
+        
+        Args:
+            env: The HighwayEnv environment. Students may use the
+                 environment to access its parameters and dynamics.
+        """
         self.env = env
         self.gamma = discount_factor
         self.Q = {}       # state -> [q for each action]
@@ -36,8 +43,19 @@ class Agent:
         best = max(q)
         return random.choice([a for a in range(NUM_ACTIONS) if q[a] == best])
 
-    # ---------- learning ----------
     def learn_policy(self, time_limit):
+        """
+        Learn a policy for controlling the car.
+        
+        Args:
+            time: Maximum time in seconds allowed for learning.
+        
+        The learned policy should be stored internally and used by
+        `get_action()`.
+        
+        Returns:
+            None
+        """
         # stop a little early so the SIGALRM in run.py never fires
         budget = time_limit * 0.85
         start = time.time()
@@ -84,8 +102,26 @@ class Agent:
 
                 s = s2
 
-    # ---------- acting ----------
     def get_action(self, speed, lane, min_dist):
+        """
+        Select an action for the current state.
+        
+        Args:
+            speed: Current speed of the controlled car.
+            lane: Current lane of the controlled car.
+            min_dist: A list where min_dist[i] represents the minimum
+                distance between the controlled car and another car
+                in lane i.
+        
+        Returns:
+            int: An action from the following set:
+        
+                ACTION_INCREASE_SPEED = 0
+                ACTION_DECREASE_SPEED = 1
+                ACTION_INCREASE_LANE = 2
+                ACTION_DECREASE_LANE = 3
+                ACTION_NO_OP = 4
+        """
         s = self._key(speed, lane, min_dist)
         if s not in self.Q:
             # unseen state: simple safe heuristic
